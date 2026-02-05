@@ -91,7 +91,7 @@ class StreamHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
 
-            buffer_size = self.streamlink_options.get("buffer_size", 262144)
+            buffer_size = self.streamlink_options.get("buffer_size", 8388608)
             stream_fd = stream.open()
 
             try:

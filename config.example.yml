@@ -10,4 +10,4 @@ options:
   user_agent: "StreamPipe/1.0"
   threads: 4
   timeout: 20.0
-  buffer_size: 8192
+  buffer_size: 8388608
