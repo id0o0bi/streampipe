@@ -74,6 +74,7 @@ class StreamHandler(BaseHTTPRequestHandler):
         session.set_option("http-headers", {"User-Agent": user_agent})
         session.set_option("http-timeout", timeout)
         session.set_option("stream-segment-threads", threads)
+        session.set_option("ringbuffer-size", 32 * 1024 * 1024)
 
         try:
             streams = session.streams(url)
@@ -90,7 +91,7 @@ class StreamHandler(BaseHTTPRequestHandler):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
 
-            buffer_size = self.streamlink_options.get("buffer_size", 8192)
+            buffer_size = self.streamlink_options.get("buffer_size", 262144)
             stream_fd = stream.open()
 
             try:
@@ -99,11 +100,19 @@ class StreamHandler(BaseHTTPRequestHandler):
                     if not data:
                         break
 
-                    chunk_size = len(data)
-                    self.wfile.write(f"{chunk_size:x}\r\n".encode())
-                    self.wfile.write(data)
-                    self.wfile.write(b"\r\n")
-                    self.wfile.flush()
+                    # Ensure we don't split MPEG-TS packets (188 bytes)
+                    # Trim to nearest packet boundary
+                    ts_packet_size = 188
+                    remainder = len(data) % ts_packet_size
+                    if remainder != 0 and len(data) > ts_packet_size:
+                        data = data[:-remainder]
+
+                    if data:
+                        chunk_size = len(data)
+                        self.wfile.write(f"{chunk_size:x}\r\n".encode())
+                        self.wfile.write(data)
+                        self.wfile.write(b"\r\n")
+                        self.wfile.flush()
 
                 self.wfile.write(b"0\r\n\r\n")
 
